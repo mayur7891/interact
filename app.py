@@ -12,6 +12,8 @@ app = create_app()
 
 @app.route("/api")
 def get_data():
+    records = CommentModel.get_comments_by_video(1)
+    print(records)
     return jsonify({"message": "Hello from Flask!", "status": "success"})
 
 

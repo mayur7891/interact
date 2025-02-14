@@ -1,5 +1,10 @@
 from flask import Blueprint, jsonify
-from app.model import CommentModel  # Import CommentModel
+from app.model import CommentModel  
+from bson.objectid import ObjectId
+
+from flask import Blueprint, request, jsonify
+from app.services.preprocessing import preprocess_text, analyze_sentiment
+from app.model import CommentModel, SentimentModel
 
 comment_bp = Blueprint("comments", __name__)  # Define Blueprint
 
@@ -14,9 +19,7 @@ def get_comments(video_id):
         return jsonify({"error": "No comments found for this video"}), 404
     
 
-from flask import Blueprint, request, jsonify
-from app.services.preprocessing import preprocess_text, analyze_sentiment
-from app.model import CommentModel, SentimentModel
+
 
 comment_bp = Blueprint("comment_routes", __name__)
 
@@ -67,3 +70,21 @@ def process_comment():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@comment_bp.route("/add_reply/<string:comment_id>", methods=["POST"])
+def add_reply(comment_id):
+    """API to add a reply to a comment."""
+    data = request.json
+    reply_user_id = data.get("reply_user_id")
+    reply_text = data.get("reply_text")
+
+    if not reply_user_id or not reply_text:
+        return jsonify({"error": "Missing required fields"}), 400
+
+    success = CommentModel.add_reply(comment_id, reply_user_id, reply_text)
+    
+    if success:
+        return jsonify({"message": "Reply added successfully"}), 200
+    else:
+        return jsonify({"error": "Failed to add reply. Comment not found."}), 404
