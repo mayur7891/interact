@@ -5,6 +5,7 @@ class Config:
 
     # Flask settings
     SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
+    JWT_SECRET_KEY = "your_jwt_secret_key_here"
 
     # MongoDB settings (Use environment variables for security)
     MONGO_USER = os.getenv("MONGO_USER", "mayur")

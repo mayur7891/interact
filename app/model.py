@@ -1,15 +1,20 @@
-from datetime import datetime, timezone
+import datetime
+from datetime import timezone
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 from app import mongo
 from pymongo.errors import DuplicateKeyError
 from pymongo import UpdateOne
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+# import datetime
+
 
 class CommentModel:
     """Handles comment-related database operations."""
 
     @staticmethod
-    def add_comment(video_id, user_id, comment_text, embedding, cluster, sentiment):
+    def add_comment(video_id, user_id, comment_text, embedding, cluster, sentiment,timestamp):
         """Insert a new comment into the database."""
         comment_data = {
             "video_id": video_id,
@@ -19,7 +24,7 @@ class CommentModel:
             "cluster": cluster,
             "sentiment": sentiment,  # "positive", "negative", "neutral"
             "replies": [],
-            "timestamp": datetime.now(timezone.utc)
+            "timestamp": timestamp
         }
         result = mongo.db.comments.insert_one(comment_data)
         return str(result.inserted_id)
@@ -52,7 +57,7 @@ class CommentModel:
         comment = mongo.db.comments.find_one({"_id": ObjectId(comment_id)})
         if comment:
             comment["_id"] = str(comment["_id"])  # Convert ObjectId to string
-        return comment
+        return {**comment, "_id": str(comment["_id"])}
     
     @staticmethod
     def get_non_empty_embedding_data(video_id):
@@ -152,3 +157,97 @@ class VideoModel:
 
 
         
+
+# User Model
+
+
+
+
+SECRET_KEY = "your_secret_key"  
+
+class UserModel:
+    """Handles user authentication & JWT-based authentication"""
+
+    @staticmethod
+    def add_user(user_name, password, is_creator):
+        """Registers a new user with a hashed password"""
+        user_data = {
+            "user_name": user_name,
+            "password": generate_password_hash(password),
+            "isCreator": is_creator
+        }
+
+        try:
+            result = mongo.db.users.insert_one(user_data)
+            return {"message": "User registered successfully", "user_id": str(result.inserted_id)}
+        except:
+            return {"error": "Username already exists"}
+
+    @staticmethod
+    def generate_token(user_name):
+        """Generates a JWT token for authenticated users"""
+        payload = {
+            "user_name": user_name,
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)  # Token expires in 2 hours
+        }
+        token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+        return token
+
+    @staticmethod
+    def verify_user(user_name, password):
+        """Verifies user credentials and returns a JWT token"""
+        user = mongo.db.users.find_one({"user_name": user_name})
+
+        if user and check_password_hash(user["password"], password):
+            token = UserModel.generate_token(user_name)
+            return {"message": "Login successful", "token": token, "isCreator": user["isCreator"]}
+        else:
+            return {"error": "Invalid username or password"}
+
+    @staticmethod
+    def decode_token(token):
+        """Decodes the JWT token to get user info"""
+        try:
+            decoded = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            return decoded["user_name"]
+        except jwt.ExpiredSignatureError:
+            return {"error": "Token has expired"}
+        except jwt.InvalidTokenError:
+            return {"error": "Invalid token"}
+
+    """Handles user authentication & management"""
+
+    @staticmethod
+    def add_user(user_name, password, is_creator):
+        """Registers a new user with a hashed password & unique username"""
+        user_data = {
+            "user_name": user_name,
+            "password": generate_password_hash(password),  # Hash password before storing
+            "isCreator": is_creator
+        }
+
+        try:
+            result = mongo.db.users.insert_one(user_data)
+            return {"message": "User registered successfully", "user_id": str(result.inserted_id)}
+        except DuplicateKeyError:
+            return {"error": "Username already exists"}
+
+    @staticmethod
+    def get_user(user_name):
+        """Fetches a user by user_name"""
+        user = mongo.db.users.find_one({"user_name": user_name}, {"_id": 0, "password": 0})  # Hide password
+
+        if user:
+            return user
+        else:
+            return {"error": "User not found"}
+
+    @staticmethod
+    def verify_user(user_name, password):
+        """Verifies user credentials"""
+        user = mongo.db.users.find_one({"user_name": user_name})
+
+        if user and check_password_hash(user["password"], password):
+            return {"message": "Login successful", "isCreator": user["isCreator"]}
+        else:
+            return {"error": "Invalid username or password"}
