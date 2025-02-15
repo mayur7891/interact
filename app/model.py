@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 from app import mongo
-
+from pymongo.errors import DuplicateKeyError
 from pymongo import UpdateOne
 
 class CommentModel:
@@ -109,3 +109,46 @@ class SentimentModel:
         )
         return sentiment if sentiment else None
     
+
+
+# mongo.db.videos.create_index("video_id", unique=True)
+
+class VideoModel:
+    """Handles video data"""
+
+    @staticmethod
+    def add_video(video_ID, description, title, duration, creator_id):
+        """Inserts new video data, ensuring video_id is unique"""
+        video_data = {
+            "video_id": video_ID,
+            "description": description,
+            "title": title,
+            "duration": duration,
+            "creator_id": creator_id
+        }
+
+        try:
+            result = mongo.db.videos.insert_one(video_data)
+            return {"message": "Video added successfully", "video_id": str(result.inserted_id)}
+        except DuplicateKeyError:
+            return {"error": "video_id already exists"}  # Prevent duplicate insertion
+        
+    @staticmethod
+    def get_all_videos():
+        """Fetches all videos from the database"""
+        videos = mongo.db.videos.find({}, {"_id": 0})  # Excluding MongoDB's default _id field
+        return list(videos)
+
+    @staticmethod
+    def get_video_by_id(video_ID):
+        """Fetches a single video by video_id"""
+        video = mongo.db.videos.find_one({"video_id": video_ID}, {"_id": 0})  # Exclude _id field
+
+        if video:
+            return video
+        else:
+            return {"error": "Video not found"}
+        
+
+
+        
