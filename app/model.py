@@ -7,6 +7,7 @@ from pymongo.errors import DuplicateKeyError
 from pymongo import UpdateOne
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
+import uuid
 # import datetime
 
 
@@ -37,19 +38,26 @@ class CommentModel:
         return [{**comment, "_id": str(comment["_id"])} for comment in comments]
 
     @staticmethod # needs to be updated (video and comment id)
-    def add_reply(comment_id, reply_user_id, reply_text):
+    def add_reply(comment_id, reply_user_id, reply_text, reply_id):
         """Add a reply to a specific comment."""
         reply_data = {
-            "reply_id": str(ObjectId()),
-            "reply": reply_text,
+            "reply_id": reply_id,
+            "reply_text": reply_text,
             "reply_user_id": reply_user_id,
-            "timestamp": datetime.now(timezone.utc)
         }
         result = mongo.db.comments.update_one(
             {"_id": ObjectId(comment_id)},
             {"$push": {"replies": reply_data}}
         )
-        return result.modified_count > 0  # Returns True if the update was successful
+        return reply_id  # Returns True if the update was successful
+
+    @staticmethod
+    def get_replies(comment_id):
+        """Fetch the replies list of a specific comment by _id."""
+        comment = mongo.db.comments.find_one({"_id": ObjectId(comment_id)}, {"replies": 1})
+        if comment:
+            return comment.get("replies", [])  # Return replies list or empty if none
+        return None  # Return None if comment not found
 
     @staticmethod
     def get_comment_by_id(comment_id):
@@ -81,9 +89,43 @@ class CommentModel:
 
         if bulk_ops:
             mongo.db.comments.bulk_write(bulk_ops)  
+    @staticmethod
+    def get_comments_by_cluster(video_id, cluster):
+        """Fetch comments filtered by video_id and cluster number, sorted by timestamp (latest first)."""
+        comments = mongo.db.comments.find({"video_id": video_id, "cluster": cluster}) \
+                                    .sort("timestamp", -1)  
+
+        return [{**comment, "_id": str(comment["_id"])} for comment in comments]
 
 
+    @staticmethod
+    def get_unique_clusters_with_sample(video_id):
+        """Fetch unique clusters and one comment from each cluster for a specific video."""
+        pipeline = [
+            {"$match": {"video_id": video_id}},  # Filter by video_id
+            {"$group": {
+                "_id": "$cluster",
+                "sample_comment": {"$first": "$$ROOT"}  # Pick the first comment per cluster
+            }},
+            {"$project": {
+                "_id": 0,
+                "cluster": "$_id",
+                "comment": {
+                    "_id": {"$toString": "$sample_comment._id"},  # Convert ObjectId to string
+                    "video_id": "$sample_comment.video_id",
+                    "user_id": "$sample_comment.user_id",
+                    "comment": "$sample_comment.comment",
+                    "embedding": "$sample_comment.embedding",
+                    "cluster": "$sample_comment.cluster",
+                    "sentiment": "$sample_comment.sentiment",
+                    "replies": "$sample_comment.replies",
+                    "timestamp": "$sample_comment.timestamp"
+                }
+            }}
+        ]
 
+        clusters = list(mongo.db.comments.aggregate(pipeline))
+        return clusters
 
 
 class SentimentModel:

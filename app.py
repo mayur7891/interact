@@ -88,9 +88,33 @@ def handle_new_comment(data):
         print(e)
         emit("error", {"message": str(e)}, broadcast=False)
 
+@socketio.on("new_reply")
+def handle_new_reply(data):
+    """Handles new replies and emits to all users"""
+    comment_id = data.get("comment_id")
+    reply_user_id = data.get("reply_user_id")
+    reply_text = data.get("reply_text")
+    timestamp = datetime.datetime.now(timezone.utc).isoformat()
 
+    if not comment_id or not reply_user_id or not reply_text:
+        emit("error", {"message": "Missing required fields"}, broadcast=False)
+        return
 
+    try:
+        # Store reply in DB
+        success = CommentModel.add_reply(comment_id, reply_user_id, reply_text, timestamp)
 
+        # Emit new reply correctly
+        emit("receive_reply", {
+            "_id": str(success),  # Store correct reply ID
+            "comment_id": comment_id,
+            "reply_user_id": reply_user_id,
+            "reply_text": reply_text,
+            "timestamp": timestamp
+        }, broadcast=True)
+
+    except Exception as e:
+        emit("error", {"message": str(e)}, broadcast=False)
 
 
 # Register Blueprints

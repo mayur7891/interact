@@ -33,30 +33,30 @@ from app.model import SentimentModel, CommentModel
 
 
 
-@socketio.on("new_reply")
-def handle_new_reply(data):
-    """Handles new replies and emits to all users"""
-    comment_id = data.get("comment_id")
-    reply_user_id = data.get("reply_user_id")
-    reply_text = data.get("reply_text")
+# @socketio.on("new_reply")
+# def handle_new_reply(data):
+#     """Handles new replies and emits to all users"""
+#     comment_id = data.get("comment_id")
+#     reply_user_id = data.get("reply_user_id")
+#     reply_text = data.get("reply_text")
 
-    if not comment_id or not reply_user_id or not reply_text:
-        emit("error", {"message": "Missing required fields"}, broadcast=False)
-        return
+#     if not comment_id or not reply_user_id or not reply_text:
+#         emit("error", {"message": "Missing required fields"}, broadcast=False)
+#         return
 
-    try:
-        # Store reply in DB
-        success = CommentModel.add_reply(comment_id, reply_user_id, reply_text)
+#     try:
+#         # Store reply in DB
+#         success = CommentModel.add_reply(comment_id, reply_user_id, reply_text)
 
-        if success:
-            # Emit the new reply to all connected clients
-            emit("new_reply", {
-                "comment_id": comment_id,
-                "reply_user_id": reply_user_id,
-                "reply_text": reply_text
-            }, broadcast=True)
-        else:
-            emit("error", {"message": "Failed to add reply. Comment not found."}, broadcast=False)
+#         if success:
+#             # Emit the new reply to all connected clients
+#             emit("new_reply", {
+#                 "comment_id": comment_id,
+#                 "reply_user_id": reply_user_id,
+#                 "reply_text": reply_text
+#             }, broadcast=True)
+#         else:
+#             emit("error", {"message": "Failed to add reply. Comment not found."}, broadcast=False)
 
-    except Exception as e:
-        emit("error", {"message": str(e)}, broadcast=False)
+#     except Exception as e:
+#         emit("error", {"message": str(e)}, broadcast=False)
