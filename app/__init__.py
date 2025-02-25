@@ -5,10 +5,13 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
 from app.config import Config
 
+from flask_socketio import SocketIO
+
 # Initialize extensions globally
 mongo = PyMongo()
 bcrypt = Bcrypt()
 jwt = JWTManager()
+socketio = SocketIO(cors_allowed_origins="*")
   # ✅ Allow CORS for WebSockets
 
 
@@ -17,11 +20,14 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Initialize plugins
+    # Initialize MongoDB
     mongo.init_app(app)
+    if mongo.db is None:
+      print("⚠️ MongoDB connection failed! Check your URI.")
+
     bcrypt.init_app(app)
     CORS(app)
     jwt.init_app(app)
- 
+    socketio.init_app(app)
 
     return app

@@ -13,6 +13,11 @@ def register():
     if not data.get("user_name") or not data.get("password"):
         return jsonify({"error": "Username and password are required"}), 400
 
+    # Check if the username already exists in the database
+    existing_user = mongo.db.users.find_one({"user_name": data["user_name"]})
+    if existing_user:
+        return jsonify({"error": "Username already exists"}), 400
+
     result = UserModel.add_user(
         user_name=data["user_name"],
         password=data["password"],
@@ -20,6 +25,7 @@ def register():
     )
 
     return jsonify(result), 201 if "user_id" in result else 400
+
 
 
 @user_bp.route("/login", methods=["POST"])
@@ -34,17 +40,19 @@ def login():
 
     # Verify user credentials
     result = UserModel.verify_user(user_name, password)
+    print(result)
 
-    if "error" in result:
-        return jsonify(result), 401  # Unauthorized
+    # Check if result is valid and contains the 'password' field
+
+
 
     # Generate JWT Token
     access_token = create_access_token(identity=user_name)
     return jsonify({
-        "user_id":user_name,
+        "user_id": user_name,
         "message": "Login successful",
         "token": access_token,
-        "isCreator": result["isCreator"]
+        "isCreator": result.get("isCreator", False)
     }), 200
 
 

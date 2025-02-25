@@ -5,7 +5,10 @@ import numpy as np
 from app.model import CommentModel
 from app.services.preprocessing import preprocess_text
 from app.services.ml_service import cluster
+from app.model import ClusterReplyModel
 
+import datetime
+from datetime import timezone
 
 ml_bp = Blueprint("ml", __name__)
 
@@ -76,3 +79,43 @@ def get_clusters(video_id):
     CommentModel.bulk_update_clusters(bulk_updates)
 
     return jsonify({"message": "Clusters updated successfully."})
+
+
+@ml_bp.route('/reply_cluster/<int:video_id>/<int:cluster_no>', methods=["POST"])
+def reply_cluster(video_id,cluster_no):
+    data = request.json
+    reply_text = data.get("reply_text")
+    creator_id = data.get("creator_id")
+    timestamp = timestamp = datetime.datetime.now(timezone.utc).isoformat()
+
+    if not reply_text:
+        return jsonify({"error": "Reply is required"}), 400
+    
+    try:
+        result = ClusterReplyModel.add_cluster_reply(cluster_no,video_id,creator_id, reply_text, timestamp)
+        return jsonify({"message": "Reply added successfully!"}), 201
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@ml_bp.route('/get_cluster_replies/<int:video_id>/<int:cluster_no>', methods=["GET"])
+def get_cluster_replies(video_id,cluster_no):
+    try:
+        results = ClusterReplyModel.get_replies_by_cluster_videoId(video_id,cluster_no)
+        return jsonify(results), 201
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@ml_bp.route('/get_all_cluster_replies/<int:video_id>/<creator_id>', methods=["GET"])
+def get_All_cluster_replies(video_id,creator_id):
+    try:
+        results = ClusterReplyModel.get_Allreplies_by_creatorId_videoId(video_id,creator_id)
+        return jsonify(results), 201
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+

@@ -7,8 +7,6 @@ from pymongo.errors import DuplicateKeyError
 from pymongo import UpdateOne
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
-import uuid
-# import datetime
 
 
 class CommentModel:
@@ -93,6 +91,14 @@ class CommentModel:
     def get_comments_by_cluster(video_id, cluster):
         """Fetch comments filtered by video_id and cluster number, sorted by timestamp (latest first)."""
         comments = mongo.db.comments.find({"video_id": video_id, "cluster": cluster}) \
+                                    .sort("timestamp", -1)  
+
+        return [{**comment, "_id": str(comment["_id"])} for comment in comments]
+    
+    @staticmethod
+    def get_comments_by_user(video_id, user_id):
+        """Fetch comments filtered by video_id and cluster number, sorted by timestamp (latest first)."""
+        comments = mongo.db.comments.find({"video_id": video_id, "user_id": user_id}) \
                                     .sort("timestamp", -1)  
 
         return [{**comment, "_id": str(comment["_id"])} for comment in comments]
@@ -197,7 +203,31 @@ class VideoModel:
             return {"error": "Video not found"}
         
 
+class ClusterReplyModel:
 
+    @staticmethod
+    def add_cluster_reply(cluster_no,video_id,creator_id,reply_text,timestamp):
+        query = {"video_id": video_id, "cluster_no": cluster_no}
+        update = {
+            "$push": {"replies": {"reply_text":reply_text,"timestamp":timestamp}},  # Append new reply
+            "$setOnInsert": {"creator_id": creator_id,}  # Set only on insert
+        }
+        options = {"upsert": True}
+
+        updated_doc = mongo.db.clusterReply.find_one_and_update(query, update, return_document=True, **options)
+        return updated_doc
+    
+    @staticmethod
+    def get_replies_by_cluster_videoId(video_id, cluster_no):
+        """Fetch comments filtered by video_id and cluster number, sorted by timestamp (latest first)."""
+        replies = mongo.db.clusterReply.find({"video_id": video_id, "cluster_no": cluster_no},{"_id":0,"replies":1})
+
+        return replies
+    
+    @staticmethod
+    def get_Allreplies_by_creatorId_videoId(video_id, creator_id):
+        replies = mongo.db.clusterReply.find({"video_id": video_id, "creator_id": creator_id},{"_id":0,"cluster_no":1,"replies":1})
+        return replies
         
 
 # User Model
