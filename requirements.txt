@@ -302,12 +302,5 @@ wikipedia==1.4.0
 wrapt==1.14.1
 wsgicors==0.7.0
 wsproto==1.2.0
-xxhash==3.5.0
-yams==0.48.0
-Yapps2==2.2.0
-Yapps2-logilab==2.2.1
-yarl==1.8.2
-yellowbrick==1.5
-zipp==3.15.0
-zope.deprecation==4.4.0
-zope.interface==5.5.2
+gunicorn
+eventlet
