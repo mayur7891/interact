@@ -68,4 +68,4 @@ jobs:
         with:
           app-name: 'interact'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_F3411A5574904947864FE23BAFED4057 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_5D1CCDFEC1564D5CAC585173EA225210 }}
