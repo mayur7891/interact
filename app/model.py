@@ -274,7 +274,7 @@ class UserModel:
             token = UserModel.generate_token(user_name)
             return {"message": "Login successful", "token": token, "isCreator": user["isCreator"]}
         else:
-            return {"error": "Invalid username or password"}
+            return None
 
     @staticmethod
     def decode_token(token):
@@ -314,12 +314,12 @@ class UserModel:
         else:
             return {"error": "User not found"}
 
-    @staticmethod
-    def verify_user(user_name, password):
-        """Verifies user credentials"""
-        user = mongo.db.users.find_one({"user_name": user_name})
+    # @staticmethod
+    # def verify_user(user_name, password):
+    #     """Verifies user credentials"""
+    #     user = mongo.db.users.find_one({"user_name": user_name})
 
-        if user and check_password_hash(user["password"], password):
-            return {"message": "Login successful", "isCreator": user["isCreator"]}
-        else:
-            return {"error": "Invalid username or password"}
+    #     if user and check_password_hash(user["password"], password):
+    #         return {"message": "Login successful", "isCreator": user["isCreator"]}
+    #     else:
+    #         return None

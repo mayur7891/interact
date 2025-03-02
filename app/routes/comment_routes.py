@@ -25,7 +25,7 @@ def get_comments(video_id):
 
 @comment_bp.route("/<comment_id>/comment", methods=["GET"])
 def get_comments_by_commentId(comment_id):
-    """Fetch all comments for a particular video ID."""
+    """Fetch all comments for a particular comment ID."""
     object_id = ObjectId(comment_id)
     comments = CommentModel.get_comment_by_id(object_id)  # Convert to string for MongoDB
     
@@ -40,6 +40,7 @@ def get_replies_by_commentId(comment_id):
     """Fetch all comments for a particular video ID."""
     try:
         object_id = ObjectId(comment_id)
+    
         replies = CommentModel.get_replies(object_id)  # Retrieve replies from the database
 
         if not replies:  # Check if there are no replies
@@ -62,7 +63,7 @@ def get_comments_by_cluster(video_id, cluster):
 
 @comment_bp.route("/<user_id>/<int:video_id>", methods=["GET"])
 def get_comments_by_videoId_userId(video_id, user_id):
-    """API to fetch comments filtered by video_id and cluster number."""
+    """API to fetch comments filtered by video_id and user ID."""
     try:
         comments = CommentModel.get_comments_by_user(video_id, user_id)
         return jsonify({"success": True, "comments": comments}), 200

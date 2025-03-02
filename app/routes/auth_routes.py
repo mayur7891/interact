@@ -43,7 +43,8 @@ def login():
     print(result)
 
     # Check if result is valid and contains the 'password' field
-
+    if  result is None:
+        return jsonify(result), 401
 
 
     # Generate JWT Token
