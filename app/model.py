@@ -323,3 +323,38 @@ class UserModel:
     #         return {"message": "Login successful", "isCreator": user["isCreator"]}
     #     else:
     #         return None
+
+
+class SummaryModel:
+    """Handles summary storage and updates for each video."""
+
+    @staticmethod
+    def initialize_summary(video_id, summary_text):
+        """Creates an initial summary entry for a video."""
+        summary_data = {
+            "video_id": video_id,
+            "summary": summary_text
+        }
+        mongo.db.videoSummary.insert_one(summary_data)
+        return {"message": "Summary initialized successfully"}
+
+    @staticmethod
+    def update_summary(video_id, new_summary):
+        """Updates the existing summary by merging with a new one."""
+        mongo.db.videoSummary.update_one(
+            {"video_id": video_id},
+            {"$set": {"summary": new_summary}},
+            upsert=True  # If no summary exists, create a new one
+        )
+        return {"message": "Summary updated successfully"}
+
+    @staticmethod
+    def get_summary(video_id):
+        """Fetches the summary for a given video."""
+        summary = mongo.db.videoSummary.find_one(
+            {"video_id": video_id},
+            {"_id": 0, "summary": 1}  # Exclude _id field
+        )
+        return summary if summary else {"message": "No summary available"}
+    
+    

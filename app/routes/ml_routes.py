@@ -6,7 +6,7 @@ from app.model import CommentModel
 from app.services.preprocessing import preprocess_text
 from app.services.ml_service import cluster
 from app.model import ClusterReplyModel
-
+from app.model import SummaryModel
 import datetime
 from datetime import timezone
 
@@ -117,5 +117,24 @@ def get_All_cluster_replies(video_id,creator_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+
+#Summary routes
+    
+@ml_bp.route('/getsummary/<int:video_id>', methods=['GET'])
+def get_summary(video_id):
+    """API endpoint to get the summary of a video."""
+    summary = SummaryModel.get_summary(video_id)
+    return jsonify(summary)
+
+@ml_bp.route('/update-summary/<int:video_id>', methods=['PUT'])
+def update_summary(video_id):
+    """API endpoint to update the summary of a video."""
+    data = request.get_json()
+    new_summary = data.get("summary")
+    if not new_summary:
+        return jsonify({"error": "Summary text is required"}), 400
+    
+    response = SummaryModel.update_summary(video_id, new_summary)
+    return jsonify(response)
 
 
