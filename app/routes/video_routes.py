@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify
-from pymongo.errors import DuplicateKeyError
-from app.model import VideoModel
+from app.models import VideoModel
 
 
 video_bp = Blueprint('video_routes', __name__)

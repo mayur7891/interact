@@ -1,18 +1,13 @@
 from flask import Flask
-from flask_pymongo import PyMongo
 from flask_cors import CORS
-from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
-from app.config import Config
-
 from flask_socketio import SocketIO
+from app.config import Config
+from app.utils.db_utils import MongoDB
 
-# Initialize extensions globally
-mongo = PyMongo()
-bcrypt = Bcrypt()
+mongo = MongoDB()
 jwt = JWTManager()
 socketio = SocketIO(cors_allowed_origins="*")
-  # ✅ Allow CORS for WebSockets
 
 
 def create_app():
@@ -20,14 +15,25 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Initialize MongoDB
+    # Initialize MongoDB with connection pooling, retries, and indexes
     mongo.init_app(app)
-    if mongo.db is None:
-      print("⚠️ MongoDB connection failed! Check your URI.")
+    if not mongo.ping():
+        print("WARNING: MongoDB connection failed! Check your URI.")
 
-    bcrypt.init_app(app)
     CORS(app)
     jwt.init_app(app)
     socketio.init_app(app)
+
+    # Register blueprints inside factory to avoid circular imports
+    from app.routes.auth_routes import user_bp
+    from app.routes.comment_routes import comment_bp
+    from app.routes.video_routes import video_bp
+    from app.routes.ml_routes import ml_bp
+    from app.sockets import events  # noqa: F401 - registers socket handlers
+
+    app.register_blueprint(ml_bp, url_prefix="/ml")
+    app.register_blueprint(comment_bp, url_prefix="/comments")
+    app.register_blueprint(video_bp, url_prefix="/video")
+    app.register_blueprint(user_bp, url_prefix="/auth")
 
     return app

@@ -1,67 +1,59 @@
-import pickle
 import pandas as pd
-import os
 import re
-from azure.storage.blob import BlobServiceClient
 
-# Azure Storage details
-STORAGE_ACCOUNT_NAME = "interact1234554321"
-STORAGE_CONTAINER_NAME = "pickles"
-CONNECTION_STRING = "DefaultEndpointsProtocol=https;AccountName=interact1234554321;AccountKey=fammTXpTZ+RskUuBAjqncq1oec2nVyRevgsCraRusTg9u7+kkp3rRSzC72Wy2q3AKfZkgm28sgUB+ASt8SyBEQ==;EndpointSuffix=core.windows.net "
+# ---------------------------------------------------------------------------
+# Sentiment model — loaded directly via transformers (no pickle)
+# ---------------------------------------------------------------------------
+sentiment_pipeline = None
+try:
+    from transformers import pipeline as hf_pipeline
+    sentiment_pipeline = hf_pipeline(
+        "sentiment-analysis",
+        model="distilbert-base-uncased-finetuned-sst-2-english",
+        truncation=True,
+        max_length=512,
+    )
+    print("Sentiment model loaded.")
+except Exception as e:
+    print(f"WARNING: Could not load sentiment model: {e}")
 
-# Function to download pickle files from Azure Blob Storage
-def download_pickle(blob_name, local_path):
-    blob_service_client = BlobServiceClient.from_connection_string(CONNECTION_STRING)
-    blob_client = blob_service_client.get_blob_client(container=STORAGE_CONTAINER_NAME, blob=blob_name)
-    
-    # Download and save file locally
-    with open(local_path, "wb") as f:
-        f.write(blob_client.download_blob().readall())
+# ---------------------------------------------------------------------------
+# SBERT model — loaded directly via sentence-transformers (no pickle)
+# Embeddings in DB are 384-dim → all-MiniLM-L6-v2
+# ---------------------------------------------------------------------------
+sbert_model = None
+try:
+    from sentence_transformers import SentenceTransformer
+    sbert_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    print("SBERT model loaded.")
+except Exception as e:
+    print(f"WARNING: Could not load SBERT model: {e}")
 
-# Define paths to store pickle files locally
-local_sentiment_path = "app/pickles/sentiment_pipeline.pkl"
-local_sbert_path = "app/pickles/sbert_pipeline.pkl"
 
-# Ensure the directory exists
-os.makedirs("app/pickles", exist_ok=True)
-
-# Download pickle files from Azure
-download_pickle("sentiment_pipeline.pkl", local_sentiment_path)
-download_pickle("sbert_pipeline.pkl", local_sbert_path)
-
-# Load the pickle files after downloading
-with open(local_sentiment_path, "rb") as f:
-    sentiment_analyzer, tokenizer = pickle.load(f)
-
-with open(local_sbert_path, "rb") as f:
-    sbert_model = pickle.load(f)
-
-# Function to truncate text for tokenizer
-def truncate_comment(comment):
-    tokens = tokenizer.encode(comment, truncation=True, max_length=512)
-    return tokenizer.decode(tokens, skip_special_tokens=True)
-
-# Function to analyze sentiment
 def analyze_sentiment(comment):
     if pd.isna(comment) or not isinstance(comment, str) or comment.strip() == "":
-        return "neutral", 0.0
-
-    truncated_comment = truncate_comment(comment)
-
+        return "neutral"
+    if sentiment_pipeline is None:
+        return "neutral"
     try:
-        result = sentiment_analyzer(truncated_comment)[0]
-        sentiment = result["label"].lower()
+        result = sentiment_pipeline(comment[:512])[0]
+        label = result["label"].lower()
+        # distilbert SST-2 returns POSITIVE / NEGATIVE only
+        if label == "positive":
+            return "positive"
+        elif label == "negative":
+            return "negative"
+        return "neutral"
     except Exception as e:
-        print(f"Error processing comment: {comment[:50]}... | Error: {e}")
-        sentiment = "neutral"
+        print(f"Sentiment error: {e}")
+        return "neutral"
 
-    return sentiment
 
-# Function to preprocess text and get SBERT embeddings
 def preprocess_text(text):
     text = re.sub(r"[^A-Za-z0-9.,!?(){}[\]\"'@#&%+=<>*/-]+", " ", text)
     text = text.lower().strip()
-    if len(text) == 0:
+    if not text:
         return []
-    text_embedding = sbert_model.encode(text, normalize_embeddings=True).tolist()
-    return text_embedding
+    if sbert_model is None:
+        return []
+    return sbert_model.encode(text, normalize_embeddings=True).tolist()
